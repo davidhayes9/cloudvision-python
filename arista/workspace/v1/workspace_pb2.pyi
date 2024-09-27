@@ -236,6 +236,11 @@ class _ResponseCodeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._E
     streaming status.
     """
 
+    RESPONSE_CODE_DECOMMISSION_DEVICES_INCOMPLETE: _ResponseCode.ValueType  # 2
+    """RESPONSE_CODE_DECOMMISSION_DEVICES_INCOMPLETE indicates that the decommission process is
+    incomplete for devices.
+    """
+
 class ResponseCode(_ResponseCode, metaclass=_ResponseCodeEnumTypeWrapper):
     """ResponseCode is a code for a Response indicating a particular scenario."""
     pass
@@ -246,6 +251,11 @@ RESPONSE_CODE_UNSPECIFIED: ResponseCode.ValueType  # 0
 RESPONSE_CODE_INACTIVE_DEVICES_EXIST: ResponseCode.ValueType  # 1
 """RESPONSE_CODE_INACTIVE_DEVICES_EXIST indicates that there are devices that have inactive
 streaming status.
+"""
+
+RESPONSE_CODE_DECOMMISSION_DEVICES_INCOMPLETE: ResponseCode.ValueType  # 2
+"""RESPONSE_CODE_DECOMMISSION_DEVICES_INCOMPLETE indicates that the decommission process is
+incomplete for devices.
 """
 
 global___ResponseCode = ResponseCode
@@ -578,6 +588,16 @@ class _ConfigSyncSkipCauseEnumTypeWrapper(google.protobuf.internal.enum_type_wra
     because device is in compliance.
     """
 
+    CONFIG_SYNC_SKIP_CAUSE_NO_CONFIG_SOURCES: _ConfigSyncSkipCause.ValueType  # 4
+    """CONFIG_SYNC_SKIP_CAUSE_NO_CONFIG_SOURCES indicates that the sync was
+    skipped because the device has no config sources.
+    """
+
+    CONFIG_SYNC_SKIP_CAUSE_DEVICE_DECOMMISSIONED: _ConfigSyncSkipCause.ValueType  # 5
+    """CONFIG_SYNC_SKIP_CAUSE_DEVICE_DECOMMISSIONED indicates that sync was
+    skipped because the device is decommissioned in the workspace.
+    """
+
 class ConfigSyncSkipCause(_ConfigSyncSkipCause, metaclass=_ConfigSyncSkipCauseEnumTypeWrapper):
     """ConfigSyncSkipCause enumerates the set of reasons a device can skip config sync."""
     pass
@@ -600,6 +620,16 @@ because device is pre-provisioned.
 CONFIG_SYNC_SKIP_CAUSE_IN_COMPLIANCE: ConfigSyncSkipCause.ValueType  # 3
 """CONFIG_SYNC_SKIP_CAUSE_IN_COMPLIANCE indicates that config sync is skipped
 because device is in compliance.
+"""
+
+CONFIG_SYNC_SKIP_CAUSE_NO_CONFIG_SOURCES: ConfigSyncSkipCause.ValueType  # 4
+"""CONFIG_SYNC_SKIP_CAUSE_NO_CONFIG_SOURCES indicates that the sync was
+skipped because the device has no config sources.
+"""
+
+CONFIG_SYNC_SKIP_CAUSE_DEVICE_DECOMMISSIONED: ConfigSyncSkipCause.ValueType  # 5
+"""CONFIG_SYNC_SKIP_CAUSE_DEVICE_DECOMMISSIONED indicates that sync was
+skipped because the device is decommissioned in the workspace.
 """
 
 global___ConfigSyncSkipCause = ConfigSyncSkipCause

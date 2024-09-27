@@ -48,7 +48,11 @@ ACCESS_TOKEN = "access_token"
 CMDS = "cmds"
 DEVICE_ID = "deviceID"
 EXEC_ACTION = "execaction"
-HEADERS = {"Accept": "application/json"}
+HEADER_ACCEPT = "Accept"
+HEADER_AUTH = "Authorization"
+HEADER_CONTENT_TYPE = "Content-Type"
+HEADER_JSON_APPLICATION = "application/json"
+HEADERS = {HEADER_ACCEPT: HEADER_JSON_APPLICATION}
 HOST = "host"
 JSON = "json"
 REQ_FORMAT = "format"
@@ -299,7 +303,7 @@ class Context:
                                      cookies=cookies, verify=False)
         except requests.ConnectionError as e:
             self.error(f"Got exception while establishing connection to DI : {e}")
-            raise e
+            raise
 
         self.debug(f"Status code received from DI : {response.status_code}")
         if response.status_code != 200:
@@ -411,6 +415,79 @@ class Context:
             raise InvalidContextException(("Context does not have a workspace or studio "
                                           "associated with it"))
         return self.workspace.id if self.workspace else self.studio.workspaceId
+
+    def httpGet(self, path: str):
+        '''
+        Issues a https GET to a given endpoint in CloudVision and returns the json
+        content if there are no errors
+        '''
+        if not (self.user and self.user.token):
+            raise InvalidContextException("httpGet requires an authenticated"
+                                          + " user associated with the context")
+
+        if not self.connections.serviceAddr:
+            raise InvalidContextException("httpGet must have a valid service address specified")
+
+        # Perform a split to ensure to drop any ports that are provided as part of the serviceAddr
+        url = "https://" + self.connections.serviceAddr.split(':', maxsplit=1)[0]
+        endpoint = url + path
+        headers = {
+            HEADER_ACCEPT: HEADER_JSON_APPLICATION,
+            HEADER_CONTENT_TYPE: HEADER_JSON_APPLICATION,
+            HEADER_AUTH: f"Bearer {self.user.token}"
+        }
+        try:
+            response = requests.get(endpoint, headers=headers, verify=False)
+            response.raise_for_status()
+            respJson = json.loads(response.text)
+        except requests.ConnectionError as e:
+            self.error(f"Got exception while establishing connection to url '{endpoint}': {e}")
+            raise
+        except requests.HTTPError as e:
+            self.error(f"Got error response from get on '{endpoint}': {e}")
+            raise
+        return respJson
+
+    def httpGetConfig(self, path: str):
+        '''
+        Issues a http get to retrieve the device config content at a cvp url and formats it.
+        '''
+        rawConfig = self.httpGet(path).get('config')
+        if not rawConfig:
+            return ""
+        formattedConfig = rawConfig.replace('\\n', '\n').replace('\\t', '\t')
+        return formattedConfig
+
+    def httpPost(self, path, request={}):
+        '''
+        Issues a https POST to a given endpoint in CloudVision
+        '''
+        data = json.dumps(request)
+
+        if not (self.user and self.user.token):
+            raise InvalidContextException("httpPost requires an authenticated"
+                                          + " user associated with the context")
+
+        if not self.connections.serviceAddr:
+            raise InvalidContextException("httpPost must have a valid service address specified")
+
+        # Perform a split to ensure to drop any ports that are provided as part of the serviceAddr
+        url = "https://" + self.connections.serviceAddr.split(':', maxsplit=1)[0]
+        endpoint = url + path
+        headers = {
+            HEADER_ACCEPT: HEADER_JSON_APPLICATION,
+            HEADER_CONTENT_TYPE: HEADER_JSON_APPLICATION,
+            HEADER_AUTH: f"Bearer {self.user.token}"
+        }
+        try:
+            response = requests.post(endpoint, data=data, headers=headers, verify=False)
+            response.raise_for_status()
+        except requests.ConnectionError as e:
+            self.error(f"Got exception while establishing connection to url '{endpoint}': {e}")
+            raise
+        except requests.HTTPError as e:
+            self.error(f"Got error response from get on '{endpoint}': {e}")
+            raise
 
     def Get(self, path: List[str], keys: List[str] = [], dataset: str = "analytics"):
         '''
@@ -639,83 +716,113 @@ class Context:
             if not ignoreFailures:
                 raise
 
-    def trace(self, msg, ignoreFailures=False):
+    def trace(self, msg, ignoreFailures=False, tags: Dict[str, str] = None):
         """
         Creates a trace level log if the context's logging level is set to allow for it
         If the logging level is higher, is a no-op
-        Setting `ignoreFailures` prevents logging exceptions from being raised
+        Args:
+            msg:            The string message for the  log entry
+            ignoreFailures: Prevents logging exceptions from being raised
+            tags:           A string dictionary of additional custom tags to add to the log
+                            entry. Some system tags are always inserted, e.g. buildID
+                            when logging is done in a studio context.
         """
         if self.getLoggingLevel() > LoggingLevel.Trace:
             return
         try:
-            self.logger.trace(self, msg)
+            self.logger.trace(self, msg, tags)
         except LoggingFailed:
             if not ignoreFailures:
                 raise
 
-    def debug(self, msg, ignoreFailures=False):
+    def debug(self, msg, ignoreFailures=False, tags: Dict[str, str] = None):
         """
         Creates a debug level log if the context's logging level is set to allow for it
         If the logging level is higher, is a no-op
-        Setting `ignoreFailures` prevents logging exceptions from being raised
+        Args:
+            msg:            The string message for the  log entry
+            ignoreFailures: Prevents logging exceptions from being raised
+            tags:           A string dictionary of additional custom tags to add to the log
+                            entry. Some system tags are always inserted, e.g. buildID
+                            when logging is done in a studio context.
         """
         if self.getLoggingLevel() > LoggingLevel.Debug:
             return
         try:
-            self.logger.debug(self, msg)
+            self.logger.debug(self, msg, tags)
         except LoggingFailed:
             if not ignoreFailures:
                 raise
 
-    def info(self, msg, ignoreFailures=False):
+    def info(self, msg, ignoreFailures=False, tags: Dict[str, str] = None):
         """
         Creates an info level log if the context's logging level is set to allow for it
         If the logging level is higher, is a no-op
-        Setting `ignoreFailures` prevents logging exceptions from being raised
+        Args:
+            msg:            The string message for the  log entry
+            ignoreFailures: Prevents logging exceptions from being raised
+            tags:           A string dictionary of additional custom tags to add to the log
+                            entry. Some system tags are always inserted, e.g. buildID
+                            when logging is done in a studio context.
         """
         if self.getLoggingLevel() > LoggingLevel.Info:
             return
         try:
-            self.logger.info(self, msg)
+            self.logger.info(self, msg, tags)
         except LoggingFailed:
             if not ignoreFailures:
                 raise
 
-    def warning(self, msg, ignoreFailures=False):
+    def warning(self, msg, ignoreFailures=False, tags: Dict[str, str] = None):
         """
         Creates a warning level log if the context's logging level is set to allow for it
         If the logging level is higher, is a no-op
-        Setting `ignoreFailures` prevents logging exceptions from being raised
+        Args:
+            msg:            The string message for the  log entry
+            ignoreFailures: Prevents logging exceptions from being raised
+            tags:           A string dictionary of additional custom tags to add to the log
+                            entry. Some system tags are always inserted, e.g. buildID
+                            when logging is done in a studio context.
         """
         if self.getLoggingLevel() > LoggingLevel.Warn:
             return
         try:
-            self.logger.warning(self, msg)
+            self.logger.warning(self, msg, tags)
         except LoggingFailed:
             if not ignoreFailures:
                 raise
 
-    def error(self, msg, ignoreFailures=False):
+    def error(self, msg, ignoreFailures=False, tags: Dict[str, str] = None):
         """
         Creates an error level log if the context's logging level is set to allow for it
         If the logging level is higher, is a no-op
-        Setting `ignoreFailures` prevents logging exceptions from being raised
+        Args:
+            msg:            The string message for the  log entry
+            ignoreFailures: Prevents logging exceptions from being raised
+            tags:           A string dictionary of additional custom tags to add to the log
+                            entry. Some system tags are always inserted, e.g. buildID
+                            when logging is done in a studio context.
         """
         if self.getLoggingLevel() > LoggingLevel.Error:
             return
         try:
-            self.logger.error(self, msg)
+            self.logger.error(self, msg, tags)
         except LoggingFailed:
             if not ignoreFailures:
                 raise
 
-    def critical(self, msg, ignoreFailures=False):
+    def critical(self, msg, ignoreFailures=False, tags: Dict[str, str] = None):
         """
         Creates a critical level log
-        Setting `ignoreFailures` prevents logging exceptions from being raised
+        Args:
+            msg:            The string message for the  log entry
+            ignoreFailures: Prevents logging exceptions from being raised
+            tags:           A string dictionary of additional custom tags to add to the log
+                            entry. Some system tags are always inserted, e.g. buildID
+                            when logging is done in a studio context.
         """
         try:
-            self.logger.critical(self, msg)
+            self.logger.critical(self, msg, tags)
         except LoggingFailed:
             if not ignoreFailures:
                 raise
@@ -757,19 +864,19 @@ class Context:
         def backupAlog(_, message, _userName=None, _customKey=None, tags=None):
             systemLogger.info(message)
 
-        def backupDebugOrTrace(_, message):
+        def backupDebugOrTrace(_, message, tags=None):
             systemLogger.debug(message)
 
-        def backupInfo(_, message):
+        def backupInfo(_, message, tags=None):
             systemLogger.info(message)
 
-        def backupWarning(_, message):
+        def backupWarning(_, message, tags=None):
             systemLogger.warning(message)
 
-        def backupError(_, message):
+        def backupError(_, message, tags=None):
             systemLogger.error(message)
 
-        def backupCritical(_, message):
+        def backupCritical(_, message, tags=None):
             systemLogger.critical(message)
 
         return Logger(
